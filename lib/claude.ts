@@ -15,6 +15,11 @@ import {
   deleteTask,
   toggleTaskComplete,
 } from './tasks';
+import {
+  createCalendarEvent,
+  listUpcomingEvents,
+  isCalendarConnected,
+} from './calendar';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY?.trim() });
 
@@ -175,6 +180,48 @@ const tools: Anthropic.Tool[] = [
       required: ['task_id'],
     },
   },
+  // ── Calendar tools ──
+  {
+    name: 'create_calendar_event',
+    description:
+      'Create a Google Calendar event. Use when the user says "schedule", "meeting", "book", "add to calendar", or mentions a date+time for something. Always confirm the event details in the reply.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        title: { type: 'string', description: 'Event title / meeting name' },
+        start: {
+          type: 'string',
+          description: 'Start datetime in ISO 8601 with IST offset e.g. "2025-03-15T10:00:00+05:30"',
+        },
+        end: {
+          type: 'string',
+          description: 'End datetime in ISO 8601 with IST offset. If not specified, default to 1 hour after start.',
+        },
+        description: { type: 'string', description: 'Optional event description or agenda' },
+        location: { type: 'string', description: 'Optional location or video call link' },
+        attendees: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional list of attendee email addresses',
+        },
+      },
+      required: ['title', 'start', 'end'],
+    },
+  },
+  {
+    name: 'list_upcoming_events',
+    description:
+      'List the user\'s upcoming Google Calendar events. Use when asked "what\'s on my calendar", "upcoming meetings", "schedule for today/tomorrow".',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        max_results: {
+          type: 'number',
+          description: 'Max number of events to return (default 5)',
+        },
+      },
+    },
+  },
 ];
 
 // ─────────────────────────────────────────
@@ -213,7 +260,12 @@ Task commands:
 - "show tasks" / "my reminders" → list_tasks (filter: pending)
 - "done with [task]" → complete_task
 - "delete task [x]" → delete_task
-- "remind me to [x] at [time]" → create_task with due_date`;
+- "remind me to [x] at [time]" → create_task with due_date
+
+Calendar commands (only if Google Calendar is connected):
+- "schedule meeting", "book call", "add to calendar" → create_calendar_event
+- "what's on my calendar", "upcoming meetings" → list_upcoming_events
+- If calendar is NOT connected, tell the user to connect at the dashboard URL`;
 }
 
 // ─────────────────────────────────────────
@@ -395,6 +447,48 @@ export async function processWhatsAppMessage(
             case 'delete_task': {
               await deleteTask(userId, input.task_id as string);
               result = JSON.stringify({ success: true });
+              break;
+            }
+
+            case 'create_calendar_event': {
+              const connected = await isCalendarConnected(userId);
+              if (!connected) {
+                result = JSON.stringify({
+                  success: false,
+                  error: 'Google Calendar not connected. Ask the user to visit the dashboard and click "Connect Calendar".',
+                });
+                break;
+              }
+              const calResult = await createCalendarEvent(userId, {
+                title: input.title as string,
+                start: input.start as string,
+                end: input.end as string,
+                description: input.description as string | undefined,
+                location: input.location as string | undefined,
+                attendees: input.attendees as string[] | undefined,
+              });
+              result = JSON.stringify(calResult);
+              break;
+            }
+
+            case 'list_upcoming_events': {
+              const connected = await isCalendarConnected(userId);
+              if (!connected) {
+                result = JSON.stringify({
+                  success: false,
+                  error: 'Google Calendar not connected.',
+                });
+                break;
+              }
+              const events = await listUpcomingEvents(userId, (input.max_results as number) ?? 5);
+              result = JSON.stringify(
+                events.map(e => ({
+                  title: e.title,
+                  start: new Date(e.start).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }),
+                  end: new Date(e.end).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', timeStyle: 'short' }),
+                  location: e.location || undefined,
+                }))
+              );
               break;
             }
 

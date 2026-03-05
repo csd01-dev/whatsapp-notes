@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Search, Trash2, Mic, MicOff, Send, Plus, X, Check,
   LogOut, Notebook, CheckSquare, MessageSquare, ChevronDown,
-  ChevronUp, Tag, Calendar, AlertCircle, Volume2,
+  ChevronUp, Tag, Calendar, AlertCircle, Volume2, CalendarDays,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -32,6 +32,13 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: number;
+}
+
+interface CalendarEvent {
+  title: string;
+  start: string;
+  end: string;
+  location?: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -871,6 +878,81 @@ function QuickAddModal({
   );
 }
 
+// ─── Calendar Strip ───────────────────────────────────────────────────────────
+
+function CalendarStrip({
+  phone,
+  connected,
+  events,
+  onConnect,
+}: {
+  phone: string;
+  connected: boolean;
+  events: CalendarEvent[];
+  onConnect: () => void;
+}) {
+  if (!connected) {
+    return (
+      <div className="mx-4 mt-3 mb-1 flex items-center justify-between bg-slate-800/60 border border-slate-700 rounded-xl px-4 py-2.5">
+        <div className="flex items-center gap-2 text-slate-400 text-sm">
+          <CalendarDays size={15} />
+          <span>Google Calendar not connected</span>
+        </div>
+        <a
+          href={`/api/auth/google?phone=${encodeURIComponent(phone)}`}
+          onClick={onConnect}
+          className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors shrink-0"
+        >
+          Connect
+        </a>
+      </div>
+    );
+  }
+
+  if (events.length === 0) {
+    return (
+      <div className="mx-4 mt-3 mb-1 flex items-center gap-2 text-slate-500 text-xs px-1">
+        <CalendarDays size={13} />
+        <span>No upcoming events</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-4 mt-3 mb-1">
+      <div className="flex items-center gap-1.5 text-slate-400 text-xs mb-2 px-0.5">
+        <CalendarDays size={13} />
+        <span>Upcoming</span>
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+        {events.map((ev, i) => {
+          const start = new Date(ev.start);
+          const timeStr = start.toLocaleString('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+          return (
+            <div
+              key={i}
+              className="shrink-0 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 min-w-[160px] max-w-[200px]"
+            >
+              <p className="text-white text-xs font-medium truncate">{ev.title}</p>
+              <p className="text-slate-400 text-xs mt-0.5">{timeStr}</p>
+              {ev.location && (
+                <p className="text-slate-500 text-xs truncate mt-0.5">{ev.location}</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -879,12 +961,36 @@ export default function Dashboard() {
   const [showModal, setShowModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [mounted, setMounted] = useState(false);
+  const [calendarConnected, setCalendarConnected] = useState(false);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [calendarBanner, setCalendarBanner] = useState<'connected' | 'error' | null>(null);
+
+  async function fetchCalendar(p: string) {
+    try {
+      const res = await fetch(`/api/calendar?phone=${encodeURIComponent(p)}`);
+      const data = await res.json();
+      setCalendarConnected(data.connected ?? false);
+      setCalendarEvents(data.events ?? []);
+    } catch {
+      // silently fail — calendar is optional
+    }
+  }
 
   useEffect(() => {
     setMounted(true);
     const saved = localStorage.getItem('wa_phone');
     if (saved) setPhone(saved);
+
+    // Handle OAuth callback params
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('calendar') === 'connected') setCalendarBanner('connected');
+    if (params.get('calendar') === 'error') setCalendarBanner('error');
+    if (params.has('calendar')) window.history.replaceState({}, '', '/dashboard');
   }, []);
+
+  useEffect(() => {
+    if (phone) fetchCalendar(phone);
+  }, [phone]);
 
   function handleLogin(p: string) {
     localStorage.setItem('wa_phone', p);
@@ -916,7 +1022,13 @@ export default function Dashboard() {
           <h1 className="text-white font-bold text-lg">Notes AI</h1>
         </div>
         <div className="flex items-center gap-2">
-          <span className="bg-slate-800 text-slate-400 text-xs px-2.5 py-1 rounded-full border border-slate-700 max-w-[140px] truncate">
+          {calendarConnected && (
+            <span className="flex items-center gap-1 bg-green-900/40 text-green-400 text-xs px-2 py-1 rounded-full border border-green-800/50">
+              <CalendarDays size={11} />
+              Calendar
+            </span>
+          )}
+          <span className="bg-slate-800 text-slate-400 text-xs px-2.5 py-1 rounded-full border border-slate-700 max-w-[120px] truncate">
             {phone}
           </span>
           <button
@@ -928,6 +1040,22 @@ export default function Dashboard() {
           </button>
         </div>
       </header>
+
+      {/* Calendar connected / error banner */}
+      {calendarBanner && (
+        <div className={`mx-4 mt-3 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm ${calendarBanner === 'connected' ? 'bg-green-900/30 border border-green-700/50 text-green-300' : 'bg-red-900/30 border border-red-700/50 text-red-300'}`}>
+          {calendarBanner === 'connected' ? '✅ Google Calendar connected!' : '❌ Calendar connection failed. Please try again.'}
+          <button onClick={() => setCalendarBanner(null)} className="ml-auto text-current opacity-60 hover:opacity-100"><X size={14} /></button>
+        </div>
+      )}
+
+      {/* Calendar strip */}
+      <CalendarStrip
+        phone={phone}
+        connected={calendarConnected}
+        events={calendarEvents}
+        onConnect={() => {}}
+      />
 
       {/* Content — all tabs stay mounted; show/hide with CSS so no remount lag */}
       <main className="flex-1 px-4 py-4 pb-24">
