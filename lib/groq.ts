@@ -1,6 +1,6 @@
 import Groq from 'groq-sdk';
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY?.trim() });
 
 /**
  * Transcribe a WhatsApp voice note.
@@ -13,9 +13,9 @@ export async function transcribeAudio(
 ): Promise<string | null> {
   try {
     // Twilio media URLs require HTTP Basic auth
-    const auth = Buffer.from(
-      `${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`
-    ).toString('base64');
+    const sid = process.env.TWILIO_ACCOUNT_SID?.trim();
+    const token = process.env.TWILIO_AUTH_TOKEN?.trim();
+    const auth = Buffer.from(`${sid}:${token}`).toString('base64');
 
     const audioResponse = await fetch(mediaUrl, {
       headers: { Authorization: `Basic ${auth}` },
