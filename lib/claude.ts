@@ -9,7 +9,7 @@ import {
   saveConversationMessage,
 } from './notes';
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY?.trim() });
 
 // ─────────────────────────────────────────
 // Tool definitions for Claude

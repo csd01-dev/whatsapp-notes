@@ -5,7 +5,7 @@ const client = twilio(
   process.env.TWILIO_AUTH_TOKEN!
 );
 
-const FROM = `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`;
+const FROM = `whatsapp:${process.env.TWILIO_PHONE_NUMBER?.trim()}`;
 const MAX_LENGTH = 4000; // WhatsApp limit is 4096 chars
 
 /**
