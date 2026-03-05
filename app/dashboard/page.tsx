@@ -104,8 +104,8 @@ function LoginScreen({ onLogin }: { onLogin: (phone: string) => void }) {
 
         {/* Card */}
         <div className="bg-slate-800 rounded-2xl p-6 shadow-2xl border border-slate-700">
-          <h2 className="text-white font-semibold text-lg mb-1">Sign in</h2>
-          <p className="text-slate-400 text-sm mb-5">Enter the WhatsApp number you use with the bot</p>
+          <h2 className="text-white font-semibold text-lg mb-1">Sign In</h2>
+          <p className="text-slate-400 text-sm mb-5">Enter the WhatsApp number you use with the bot.</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -132,7 +132,7 @@ function LoginScreen({ onLogin }: { onLogin: (phone: string) => void }) {
               disabled={loading || !phone.trim()}
               className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors"
             >
-              {loading ? 'Checking...' : 'Open Dashboard →'}
+              {loading ? 'Checking...' : 'Open Dashboard  →'}
             </button>
           </form>
         </div>
@@ -147,7 +147,7 @@ function LoginScreen({ onLogin }: { onLogin: (phone: string) => void }) {
 
 // ─── Notes Tab ────────────────────────────────────────────────────────────────
 
-function NotesTab({ phone }: { phone: string }) {
+function NotesTab({ phone, refreshTrigger }: { phone: string; refreshTrigger: number }) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -156,8 +156,8 @@ function NotesTab({ phone }: { phone: string }) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchNotes = useCallback(async (q?: string) => {
-    setLoading(true);
+  const fetchNotes = useCallback(async (q?: string, silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const url = q
         ? `/api/notes?phone=${encodeURIComponent(phone)}&search=${encodeURIComponent(q)}&limit=50`
@@ -166,11 +166,13 @@ function NotesTab({ phone }: { phone: string }) {
       const data = await res.json();
       setNotes(data.notes ?? []);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [phone]);
 
   useEffect(() => { fetchNotes(); }, [fetchNotes]);
+  // Silent background refresh when parent signals a change (no loading flash)
+  useEffect(() => { if (refreshTrigger > 0) fetchNotes(undefined, true); }, [refreshTrigger]);
 
   function handleSearch(val: string) {
     setSearch(val);
@@ -314,7 +316,7 @@ function NotesTab({ phone }: { phone: string }) {
 
 // ─── Tasks Tab ────────────────────────────────────────────────────────────────
 
-function TasksTab({ phone }: { phone: string }) {
+function TasksTab({ phone, refreshTrigger }: { phone: string; refreshTrigger: number }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed' | 'today'>('pending');
@@ -327,39 +329,51 @@ function TasksTab({ phone }: { phone: string }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
 
-  const fetchTasks = useCallback(async () => {
-    setLoading(true);
+  const fetchTasks = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await fetch(`/api/tasks?phone=${encodeURIComponent(phone)}&filter=${filter}`);
       const data = await res.json();
       setTasks(data.tasks ?? []);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [phone, filter]);
 
   useEffect(() => { fetchTasks(); }, [fetchTasks]);
+  // Silent background refresh when parent signals a change
+  useEffect(() => { if (refreshTrigger > 0) fetchTasks(true); }, [refreshTrigger]);
 
   async function addTask() {
     if (!newTitle.trim()) return;
     setSaving(true);
+    // Optimistic insert — show immediately, sync in background
+    const optimisticTask: Task = {
+      id: `temp-${Date.now()}`,
+      title: newTitle.trim(),
+      description: newDesc.trim(),
+      due_date: newDue ? new Date(newDue).toISOString() : null,
+      is_completed: false,
+      priority: newPriority,
+      created_at: new Date().toISOString(),
+    };
+    setTasks(prev => [optimisticTask, ...prev]);
+    setNewTitle(''); setNewDesc(''); setNewDue(''); setNewPriority('normal');
+    setShowAddForm(false);
+    setSaving(false);
+    // Background save + sync
     const res = await fetch('/api/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         phone,
-        title: newTitle.trim(),
-        description: newDesc.trim(),
-        due_date: newDue ? new Date(newDue).toISOString() : undefined,
-        priority: newPriority,
+        title: optimisticTask.title,
+        description: optimisticTask.description,
+        due_date: optimisticTask.due_date,
+        priority: optimisticTask.priority,
       }),
     });
-    if (res.ok) {
-      setNewTitle(''); setNewDesc(''); setNewDue(''); setNewPriority('normal');
-      setShowAddForm(false);
-      await fetchTasks();
-    }
-    setSaving(false);
+    if (res.ok) fetchTasks(true); // replace temp item with real one silently
   }
 
   async function toggleComplete(task: Task) {
@@ -419,6 +433,7 @@ function TasksTab({ phone }: { phone: string }) {
       {showAddForm && (
         <div className="bg-slate-800 border border-indigo-600/50 rounded-xl p-4 space-y-3">
           <h3 className="text-white font-medium text-sm">New Task</h3>
+
           <input
             type="text"
             placeholder="Task title *"
@@ -683,7 +698,7 @@ function ChatTab({ phone }: { phone: string }) {
             value={transcribing ? 'Transcribing...' : input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-            placeholder="Ask anything... (Enter to send)"
+            placeholder="Ask anything… (Enter to send)"
             rows={1}
             disabled={loading || transcribing}
             className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm resize-none leading-5 max-h-32 overflow-y-auto"
@@ -813,6 +828,7 @@ function QuickAddModal({
             className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${mode === 'task' ? 'bg-slate-500 text-white' : 'text-slate-400'}`}
           >
             ✅ Task
+
           </button>
         </div>
 
@@ -906,7 +922,7 @@ export default function Dashboard() {
           <button
             onClick={handleLogout}
             className="p-1.5 text-slate-500 hover:text-white transition-colors"
-            title="Logout"
+            title="Log Out"
           >
             <LogOut size={15} />
           </button>
@@ -915,8 +931,8 @@ export default function Dashboard() {
 
       {/* Content */}
       <main className="flex-1 px-4 py-4 pb-24">
-        {activeTab === 'notes' && <NotesTab key={refreshKey} phone={phone} />}
-        {activeTab === 'tasks' && <TasksTab key={refreshKey} phone={phone} />}
+        {activeTab === 'notes' && <NotesTab phone={phone} refreshTrigger={refreshKey} />}
+        {activeTab === 'tasks' && <TasksTab phone={phone} refreshTrigger={refreshKey} />}
         {activeTab === 'chat' && <ChatTab phone={phone} />}
       </main>
 
