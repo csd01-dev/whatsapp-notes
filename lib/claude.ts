@@ -8,6 +8,13 @@ import {
   getConversationHistory,
   saveConversationMessage,
 } from './notes';
+import {
+  createTask,
+  listTasks,
+  updateTask,
+  deleteTask,
+  toggleTaskComplete,
+} from './tasks';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY?.trim() });
 
@@ -104,6 +111,70 @@ const tools: Anthropic.Tool[] = [
       required: ['note_id'],
     },
   },
+  // ── Task tools ──
+  {
+    name: 'create_task',
+    description:
+      'Create a new task or reminder. Use when the user says "remind me", "task", "todo", "don\'t forget", or mentions something to be done by a certain time/date.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        title: { type: 'string', description: 'Short task title' },
+        description: { type: 'string', description: 'Additional details about the task' },
+        due_date: {
+          type: 'string',
+          description: 'ISO 8601 date-time string e.g. "2025-03-15T09:00:00+05:30". Use IST timezone.',
+        },
+        priority: {
+          type: 'string',
+          enum: ['low', 'normal', 'high'],
+          description: 'Priority level (default: normal)',
+        },
+      },
+      required: ['title'],
+    },
+  },
+  {
+    name: 'list_tasks',
+    description:
+      'List the user\'s tasks/reminders. Use when the user asks "show my tasks", "what do I need to do", "pending tasks", "reminders".',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        filter: {
+          type: 'string',
+          enum: ['all', 'pending', 'completed', 'today'],
+          description: 'Filter tasks: pending (not done), completed, today (due today), or all',
+        },
+      },
+    },
+  },
+  {
+    name: 'complete_task',
+    description: 'Mark a task as completed or uncompleted by its ID.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        task_id: { type: 'string', description: 'ID of the task to update' },
+        completed: {
+          type: 'boolean',
+          description: 'true to mark done, false to mark undone (default: true)',
+        },
+      },
+      required: ['task_id'],
+    },
+  },
+  {
+    name: 'delete_task',
+    description: 'Permanently delete a task by its ID.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        task_id: { type: 'string', description: 'ID of the task to delete' },
+      },
+      required: ['task_id'],
+    },
+  },
 ];
 
 // ─────────────────────────────────────────
@@ -117,27 +188,32 @@ function getSystemPrompt(): string {
     timeStyle: 'short',
   });
 
-  return `You are a personal note-keeping assistant on WhatsApp.
-You help the user save, find, and manage their notes, reminders, and ideas.
+  return `You are a personal AI assistant on WhatsApp.
+You help the user save notes, manage tasks/reminders, and find things they've saved.
 
 Current date/time (IST): ${now}
 
 Guidelines:
 - Keep responses SHORT and WhatsApp-friendly (no heavy markdown, no asterisks for bold)
-- When saving a note, briefly confirm: e.g. "Saved! 📝 [summary]"
+- When saving a note: "Saved! 📝 [summary]"
+- When creating a task: "Task added! ✅ [title]" + mention due date if set
 - When listing notes, use a numbered list with summary and date
-- When searching, show matches with a short excerpt
-- If the message is clearly a note/reminder/idea, save it automatically without asking
-- Support Hindi messages too — transcribe and save as-is
-- For reminders, note the time/date mentioned in the content
+- When listing tasks, use checkboxes: ☑ done, ☐ pending — include due date if set
+- If the message mentions "remind me", "task", "todo", "don't forget" → create_task (not save_note)
+- If the message is clearly a note/idea/info to remember → save_note
+- Support Hindi messages too — save as-is
 - Be conversational and friendly
 
-Commands the user might use:
+Note commands:
 - "show notes" / "list all" → list_recent_notes
-- "find [topic]" / "search [topic]" → search_notes
-- "delete [note]" → confirm then delete_note
-- "clear all" → list then ask for confirmation before deleting
-- Anything else → likely a new note to save`;
+- "find [topic]" → search_notes
+- "delete note [x]" → confirm then delete_note
+
+Task commands:
+- "show tasks" / "my reminders" → list_tasks (filter: pending)
+- "done with [task]" → complete_task
+- "delete task [x]" → delete_task
+- "remind me to [x] at [time]" → create_task with due_date`;
 }
 
 // ─────────────────────────────────────────
@@ -266,6 +342,58 @@ export async function processWhatsAppMessage(
 
             case 'delete_note': {
               await deleteNote(userId, input.note_id as string);
+              result = JSON.stringify({ success: true });
+              break;
+            }
+
+            case 'create_task': {
+              const taskId = await createTask(userId, {
+                title: input.title as string,
+                description: input.description as string | undefined,
+                due_date: input.due_date as string | undefined,
+                priority: input.priority as 'low' | 'normal' | 'high' | undefined,
+              });
+              result = JSON.stringify({ success: true, task_id: taskId });
+              break;
+            }
+
+            case 'list_tasks': {
+              const tasks = await listTasks(
+                userId,
+                (input.filter as 'all' | 'pending' | 'completed' | 'today') ?? 'all'
+              );
+              result = JSON.stringify(
+                tasks.map((t) => ({
+                  id: t.id,
+                  title: t.title,
+                  description: t.description,
+                  due_date: t.due_date
+                    ? new Date(t.due_date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+                    : null,
+                  is_completed: t.is_completed,
+                  priority: t.priority,
+                  created_at: new Date(t.created_at).toLocaleDateString('en-IN', {
+                    timeZone: 'Asia/Kolkata',
+                    day: 'numeric',
+                    month: 'short',
+                  }),
+                }))
+              );
+              break;
+            }
+
+            case 'complete_task': {
+              await toggleTaskComplete(
+                userId,
+                input.task_id as string,
+                (input.completed as boolean) ?? true
+              );
+              result = JSON.stringify({ success: true });
+              break;
+            }
+
+            case 'delete_task': {
+              await deleteTask(userId, input.task_id as string);
               result = JSON.stringify({ success: true });
               break;
             }

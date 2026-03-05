@@ -1,63 +1,43 @@
+import Link from 'next/link';
+
 export default function StatusPage() {
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#f0f4f8',
-        padding: '2rem',
-        textAlign: 'center',
-      }}
-    >
-      <div
-        style={{
-          background: 'white',
-          borderRadius: '16px',
-          padding: '2.5rem 3rem',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-          maxWidth: '480px',
-          width: '100%',
-        }}
-      >
-        <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>📝</div>
-        <h1 style={{ margin: '0 0 0.5rem', color: '#1a1a2e', fontSize: '1.6rem' }}>
-          WhatsApp Notes
-        </h1>
-        <p style={{ color: '#666', margin: '0 0 1.5rem' }}>
-          Your personal AI note assistant is live.
-        </p>
+    <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-center">
+      <div className="bg-slate-800 border border-slate-700 rounded-2xl p-8 max-w-md w-full shadow-xl">
+        <div className="text-5xl mb-3">📝</div>
+        <h1 className="text-white text-2xl font-bold mb-1">Notes AI</h1>
+        <p className="text-slate-400 text-sm mb-6">Your personal AI note assistant is live.</p>
 
-        <div
-          style={{
-            background: '#e8f5e9',
-            borderRadius: '8px',
-            padding: '0.75rem 1rem',
-            marginBottom: '1.5rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            justifyContent: 'center',
-          }}
+        {/* Dashboard CTA */}
+        <Link
+          href="/dashboard"
+          className="block w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-xl transition-colors text-center mb-6"
         >
-          <span style={{ fontSize: '0.85rem', color: '#2e7d32', fontWeight: 500 }}>
-            ● Webhook active at /api/webhook
-          </span>
+          Open Dashboard →
+        </Link>
+
+        {/* Status */}
+        <div className="bg-emerald-900/30 border border-emerald-700/50 rounded-lg px-4 py-2 mb-6 flex items-center justify-center gap-2">
+          <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+          <span className="text-emerald-400 text-sm font-medium">Webhook active at /api/webhook</span>
         </div>
 
-        <div style={{ textAlign: 'left', fontSize: '0.9rem', color: '#444' }}>
-          <p style={{ fontWeight: 600, marginBottom: '0.5rem' }}>What your bot can do:</p>
-          <ul style={{ margin: 0, paddingLeft: '1.2rem', lineHeight: '1.8' }}>
-            <li>Save notes, reminders, ideas via text</li>
-            <li>Transcribe and save voice notes</li>
-            <li>Search your notes by keyword</li>
-            <li>List recent saves</li>
-            <li>Delete or update notes</li>
+        {/* Capabilities */}
+        <div className="text-left">
+          <p className="text-slate-300 text-sm font-semibold mb-2">Your bot can:</p>
+          <ul className="text-slate-400 text-sm space-y-1.5">
+            <li>📝 Save notes, ideas, and reminders via text</li>
+            <li>🎤 Transcribe and save voice notes</li>
+            <li>✅ Create and manage tasks &amp; reminders</li>
+            <li>🔍 Search your notes by keyword</li>
+            <li>🗑️ Delete or update notes and tasks</li>
           </ul>
         </div>
       </div>
+
+      <p className="text-slate-600 text-xs mt-6">
+        Install as app: open dashboard on mobile → Add to Home Screen
+      </p>
     </div>
   );
 }
