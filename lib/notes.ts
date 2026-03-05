@@ -74,9 +74,10 @@ export async function searchNotes(
     .from('wa_notes')
     .select('*')
     .eq('user_id', userId)
+    .neq('source', 'task')
     .or(`content.ilike.%${query}%,summary.ilike.%${query}%`)
     .order('created_at', { ascending: false })
-    .limit(Math.min(limit, 10));
+    .limit(Math.min(limit, 50));
 
   if (error) throw new Error(`Search failed: ${error.message}`);
   return (data ?? []) as Note[];
@@ -87,8 +88,9 @@ export async function listRecentNotes(userId: string, limit = 5): Promise<Note[]
     .from('wa_notes')
     .select('*')
     .eq('user_id', userId)
+    .neq('source', 'task')  // exclude tasks — they show in the Tasks tab
     .order('created_at', { ascending: false })
-    .limit(Math.min(limit, 10));
+    .limit(Math.min(limit, 200));
 
   if (error) throw new Error(`List failed: ${error.message}`);
   return (data ?? []) as Note[];
