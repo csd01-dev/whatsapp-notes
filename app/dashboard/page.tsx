@@ -72,11 +72,21 @@ function LoginScreen({ onLogin }: { onLogin: (phone: string) => void }) {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`/api/notes?phone=${encodeURIComponent(phone.trim())}&limit=1`);
-      if (!res.ok) throw new Error('Failed');
-      onLogin(phone.trim());
-    } catch {
+      const raw = phone.trim();
+      // Try whatsapp: prefix first (how Twilio stores the number)
+      const waPhone = raw.startsWith('whatsapp:') ? raw : `whatsapp:${raw}`;
+      const res1 = await fetch(`/api/notes?phone=${encodeURIComponent(waPhone)}&limit=1`);
+      const data1 = await res1.json();
+      if (data1.userId) { onLogin(waPhone); return; }
+
+      // Fall back to raw format
+      const res2 = await fetch(`/api/notes?phone=${encodeURIComponent(raw)}&limit=1`);
+      const data2 = await res2.json();
+      if (data2.userId) { onLogin(raw); return; }
+
       setError('Could not find your account. Make sure you\'ve sent a message to the WhatsApp bot first.');
+    } catch {
+      setError('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -99,10 +109,10 @@ function LoginScreen({ onLogin }: { onLogin: (phone: string) => void }) {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-slate-300 text-sm mb-1.5">WhatsApp Number</label>
+              <label className="block text-slate-300 text-sm mb-1.5">Your WhatsApp Number</label>
               <input
                 type="tel"
-                placeholder="+919876543210"
+                placeholder="+919820654756"
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
                 className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-base"
