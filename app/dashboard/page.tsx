@@ -661,7 +661,7 @@ function ChatTab({ phone }: { phone: string }) {
   }
 
   return (
-    <div className="flex flex-col h-full" style={{ height: 'calc(100vh - 200px)' }}>
+    <div className="flex flex-col" style={{ height: 'calc(100dvh - 160px)' }}>
       {/* Messages */}
       <div className="flex-1 overflow-y-auto space-y-3 pb-4 pr-1">
         {messages.map((msg, i) => (
@@ -929,11 +929,17 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Content */}
+      {/* Content — all tabs stay mounted; show/hide with CSS so no remount lag */}
       <main className="flex-1 px-4 py-4 pb-24">
-        {activeTab === 'notes' && <NotesTab phone={phone} refreshTrigger={refreshKey} />}
-        {activeTab === 'tasks' && <TasksTab phone={phone} refreshTrigger={refreshKey} />}
-        {activeTab === 'chat' && <ChatTab phone={phone} />}
+        <div className={activeTab === 'notes' ? 'block' : 'hidden'}>
+          <NotesTab phone={phone} refreshTrigger={refreshKey} />
+        </div>
+        <div className={activeTab === 'tasks' ? 'block' : 'hidden'}>
+          <TasksTab phone={phone} refreshTrigger={refreshKey} />
+        </div>
+        <div className={activeTab === 'chat' ? 'block' : 'hidden'}>
+          <ChatTab phone={phone} />
+        </div>
       </main>
 
       {/* Bottom Tab Bar */}
