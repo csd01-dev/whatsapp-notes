@@ -964,6 +964,7 @@ export default function Dashboard() {
   const [calendarConnected, setCalendarConnected] = useState(false);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [calendarBanner, setCalendarBanner] = useState<'connected' | 'error' | null>(null);
+  const [calendarError, setCalendarError] = useState<string | null>(null);
 
   async function fetchCalendar(p: string) {
     try {
@@ -984,7 +985,10 @@ export default function Dashboard() {
     // Handle OAuth callback params
     const params = new URLSearchParams(window.location.search);
     if (params.get('calendar') === 'connected') setCalendarBanner('connected');
-    if (params.get('calendar') === 'error') setCalendarBanner('error');
+    if (params.get('calendar') === 'error') {
+      setCalendarBanner('error');
+      setCalendarError(params.get('reason') ?? null);
+    }
     if (params.has('calendar')) window.history.replaceState({}, '', '/dashboard');
   }, []);
 
@@ -1044,7 +1048,9 @@ export default function Dashboard() {
       {/* Calendar connected / error banner */}
       {calendarBanner && (
         <div className={`mx-4 mt-3 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm ${calendarBanner === 'connected' ? 'bg-green-900/30 border border-green-700/50 text-green-300' : 'bg-red-900/30 border border-red-700/50 text-red-300'}`}>
-          {calendarBanner === 'connected' ? '✅ Google Calendar connected!' : '❌ Calendar connection failed. Please try again.'}
+          {calendarBanner === 'connected'
+            ? '✅ Google Calendar connected!'
+            : `❌ Calendar connection failed${calendarError ? `: ${calendarError}` : '. Please try again.'}`}
           <button onClick={() => setCalendarBanner(null)} className="ml-auto text-current opacity-60 hover:opacity-100"><X size={14} /></button>
         </div>
       )}

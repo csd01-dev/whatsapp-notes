@@ -11,7 +11,8 @@ export async function GET(request: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
 
   if (error || !code || !state) {
-    return NextResponse.redirect(`${appUrl}/dashboard?calendar=error`);
+    const msg = encodeURIComponent(error ?? 'missing_code_or_state');
+    return NextResponse.redirect(`${appUrl}/dashboard?calendar=error&reason=${msg}`);
   }
 
   // Decode state to get userId
@@ -39,7 +40,8 @@ export async function GET(request: NextRequest) {
 
   const tokens = await tokenRes.json();
   if (!tokens.access_token || !tokens.refresh_token) {
-    return NextResponse.redirect(`${appUrl}/dashboard?calendar=error`);
+    const reason = encodeURIComponent(tokens.error_description ?? tokens.error ?? 'no_tokens');
+    return NextResponse.redirect(`${appUrl}/dashboard?calendar=error&reason=${reason}`);
   }
 
   // Fetch user's Google email
