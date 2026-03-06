@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Search, Trash2, Mic, MicOff, Send, Plus, X, Check,
-  LogOut, Notebook, CheckSquare, MessageSquare, ChevronDown,
-  ChevronUp, Tag, Calendar, AlertCircle, Volume2, CalendarDays,
+  LogOut, ChevronRight, Tag, Calendar, AlertCircle, Volume2,
+  CalendarDays, Home, FileText, CheckSquare, MessageSquare,
+  ChevronDown, ChevronUp,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -62,8 +63,8 @@ function isOverdue(due_date: string | null) {
   return new Date(due_date) < new Date();
 }
 
-function priorityColor(p: string) {
-  return p === 'high' ? 'bg-red-500' : p === 'low' ? 'bg-green-500' : 'bg-yellow-500';
+function priorityDot(p: string) {
+  return p === 'high' ? 'bg-red-500' : p === 'low' ? 'bg-green-500' : 'bg-amber-400';
 }
 
 // ─── Login Screen ─────────────────────────────────────────────────────────────
@@ -80,18 +81,16 @@ function LoginScreen({ onLogin }: { onLogin: (phone: string) => void }) {
     setError('');
     try {
       const raw = phone.trim();
-      // Try whatsapp: prefix first (how Twilio stores the number)
       const waPhone = raw.startsWith('whatsapp:') ? raw : `whatsapp:${raw}`;
       const res1 = await fetch(`/api/notes?phone=${encodeURIComponent(waPhone)}&limit=1`);
       const data1 = await res1.json();
       if (data1.userId) { onLogin(waPhone); return; }
 
-      // Fall back to raw format
       const res2 = await fetch(`/api/notes?phone=${encodeURIComponent(raw)}&limit=1`);
       const data2 = await res2.json();
       if (data2.userId) { onLogin(raw); return; }
 
-      setError('Could not find your account. Make sure you\'ve sent a message to the WhatsApp bot first.');
+      setError('Account not found. Send a message to the WhatsApp bot first.');
     } catch {
       setError('Something went wrong. Please try again.');
     } finally {
@@ -100,36 +99,33 @@ function LoginScreen({ onLogin }: { onLogin: (phone: string) => void }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
-        {/* Logo */}
         <div className="text-center mb-8">
-          <div className="text-6xl mb-3">📝</div>
-          <h1 className="text-3xl font-bold text-white">Notes AI</h1>
-          <p className="text-slate-400 mt-2 text-sm">Your personal AI assistant</p>
+          <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+            <span className="text-3xl">📝</span>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">Notes AI</h1>
+          <p className="text-gray-500 mt-1 text-sm">Your personal AI assistant</p>
         </div>
 
-        {/* Card */}
-        <div className="bg-slate-800 rounded-2xl p-6 shadow-2xl border border-slate-700">
-          <h2 className="text-white font-semibold text-lg mb-1">Sign In</h2>
-          <p className="text-slate-400 text-sm mb-5">Enter the WhatsApp number you use with the bot.</p>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+          <h2 className="text-gray-900 font-semibold text-base mb-1">Sign In</h2>
+          <p className="text-gray-400 text-sm mb-5">Enter your WhatsApp number.</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-slate-300 text-sm mb-1.5">Your WhatsApp Number</label>
-              <input
-                type="tel"
-                placeholder="+919820654756"
-                value={phone}
-                onChange={e => setPhone(e.target.value)}
-                className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-base"
-                autoFocus
-              />
-            </div>
+            <input
+              type="tel"
+              placeholder="+91 98206 54756"
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 text-base bg-gray-50"
+              autoFocus
+            />
 
             {error && (
-              <div className="flex items-start gap-2 text-red-400 text-sm bg-red-900/20 p-3 rounded-lg">
-                <AlertCircle size={16} className="shrink-0 mt-0.5" />
+              <div className="flex items-start gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-xl border border-red-100">
+                <AlertCircle size={15} className="shrink-0 mt-0.5" />
                 <span>{error}</span>
               </div>
             )}
@@ -137,17 +133,148 @@ function LoginScreen({ onLogin }: { onLogin: (phone: string) => void }) {
             <button
               type="submit"
               disabled={loading || !phone.trim()}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors text-sm"
             >
-              {loading ? 'Checking...' : 'Open Dashboard  →'}
+              {loading ? 'Checking...' : 'Open Dashboard →'}
             </button>
           </form>
         </div>
 
-        <p className="text-center text-slate-500 text-xs mt-6">
+        <p className="text-center text-gray-400 text-xs mt-5">
           No password needed — just your WhatsApp number
         </p>
       </div>
+    </div>
+  );
+}
+
+// ─── Home Tab ─────────────────────────────────────────────────────────────────
+
+function HomeTab({
+  phone,
+  calendarConnected,
+  calendarEvents,
+  onNavigate,
+}: {
+  phone: string;
+  calendarConnected: boolean;
+  calendarEvents: CalendarEvent[];
+  onNavigate: (tab: 'notes' | 'tasks' | 'chat') => void;
+}) {
+  const [recentNotes, setRecentNotes] = useState<Note[]>([]);
+  const [todayTasks, setTodayTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      try {
+        const [notesRes, tasksRes] = await Promise.all([
+          fetch(`/api/notes?phone=${encodeURIComponent(phone)}&limit=4`),
+          fetch(`/api/tasks?phone=${encodeURIComponent(phone)}&filter=today`),
+        ]);
+        const notesData = await notesRes.json();
+        const tasksData = await tasksRes.json();
+        setRecentNotes(notesData.notes ?? []);
+        setTodayTasks(tasksData.tasks ?? []);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [phone]);
+
+  const nextEvent = calendarEvents[0];
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Calendar next event */}
+      {calendarConnected && nextEvent && (
+        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3 flex items-center gap-3">
+          <div className="w-9 h-9 bg-indigo-100 rounded-xl flex items-center justify-center shrink-0">
+            <CalendarDays size={17} className="text-indigo-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-indigo-900 font-medium text-sm truncate">{nextEvent.title}</p>
+            <p className="text-indigo-500 text-xs mt-0.5">
+              {new Date(nextEvent.start).toLocaleString('en-IN', {
+                timeZone: 'Asia/Kolkata', weekday: 'short', month: 'short', day: 'numeric',
+                hour: '2-digit', minute: '2-digit',
+              })}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Notes section */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Recent Notes</h2>
+          <button onClick={() => onNavigate('notes')} className="text-indigo-600 text-xs font-medium flex items-center gap-0.5">
+            All <ChevronRight size={13} />
+          </button>
+        </div>
+        {loading ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map(i => <div key={i} className="bg-white rounded-xl h-14 animate-pulse border border-gray-100" />)}
+          </div>
+        ) : recentNotes.length === 0 ? (
+          <div className="bg-white border border-gray-100 rounded-2xl px-4 py-6 text-center">
+            <p className="text-gray-400 text-sm">No notes yet</p>
+            <p className="text-gray-300 text-xs mt-1">Send a message to your WhatsApp bot</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50 overflow-hidden shadow-sm">
+            {recentNotes.map(note => (
+              <button
+                key={note.id}
+                onClick={() => onNavigate('notes')}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+              >
+                <span className="text-lg shrink-0">{note.source === 'voice' ? '🎤' : '📄'}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-gray-900 text-sm font-medium truncate">{note.summary || note.content.slice(0, 60)}</p>
+                  <p className="text-gray-400 text-xs mt-0.5">{formatDate(note.created_at)}</p>
+                </div>
+                <ChevronRight size={14} className="text-gray-300 shrink-0" />
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Tasks section */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Due Today</h2>
+          <button onClick={() => onNavigate('tasks')} className="text-indigo-600 text-xs font-medium flex items-center gap-0.5">
+            All tasks <ChevronRight size={13} />
+          </button>
+        </div>
+        {loading ? (
+          <div className="space-y-2">
+            {[1, 2].map(i => <div key={i} className="bg-white rounded-xl h-12 animate-pulse border border-gray-100" />)}
+          </div>
+        ) : todayTasks.length === 0 ? (
+          <div className="bg-white border border-gray-100 rounded-2xl px-4 py-6 text-center">
+            <p className="text-gray-400 text-sm">No tasks due today</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50 overflow-hidden shadow-sm">
+            {todayTasks.slice(0, 4).map(task => (
+              <div key={task.id} className="flex items-center gap-3 px-4 py-3">
+                <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${priorityDot(task.priority)}`} />
+                <p className={`flex-1 text-sm ${task.is_completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>{task.title}</p>
+                {task.due_date && (
+                  <span className={`text-xs shrink-0 ${isOverdue(task.due_date) && !task.is_completed ? 'text-red-500' : 'text-gray-400'}`}>
+                    {new Date(task.due_date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
@@ -178,7 +305,6 @@ function NotesTab({ phone, refreshTrigger }: { phone: string; refreshTrigger: nu
   }, [phone]);
 
   useEffect(() => { fetchNotes(); }, [fetchNotes]);
-  // Silent background refresh when parent signals a change (no loading flash)
   useEffect(() => { if (refreshTrigger > 0) fetchNotes(undefined, true); }, [refreshTrigger]);
 
   function handleSearch(val: string) {
@@ -196,27 +322,23 @@ function NotesTab({ phone, refreshTrigger }: { phone: string; refreshTrigger: nu
     setDeletingId(null);
   }
 
-  // Collect all unique tags
   const allTags = [...new Set(notes.flatMap(n => n.tags))].filter(Boolean);
-
-  const displayed = activeTag
-    ? notes.filter(n => n.tags.includes(activeTag))
-    : notes;
+  const displayed = activeTag ? notes.filter(n => n.tags.includes(activeTag)) : notes;
 
   return (
     <div className="flex flex-col gap-4">
       {/* Search */}
       <div className="relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
           type="text"
           placeholder="Search notes..."
           value={search}
           onChange={e => handleSearch(e.target.value)}
-          className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+          className="w-full bg-white border border-gray-200 rounded-xl pl-10 pr-10 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 text-sm shadow-sm"
         />
         {search && (
-          <button onClick={() => handleSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
+          <button onClick={() => handleSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
             <X size={14} />
           </button>
         )}
@@ -227,7 +349,7 @@ function NotesTab({ phone, refreshTrigger }: { phone: string; refreshTrigger: nu
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => setActiveTag(null)}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${!activeTag ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${!activeTag ? 'bg-indigo-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-indigo-300'}`}
           >
             All
           </button>
@@ -235,84 +357,71 @@ function NotesTab({ phone, refreshTrigger }: { phone: string; refreshTrigger: nu
             <button
               key={tag}
               onClick={() => setActiveTag(tag === activeTag ? null : tag)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors flex items-center gap-1 ${activeTag === tag ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors flex items-center gap-1 ${activeTag === tag ? 'bg-indigo-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-indigo-300'}`}
             >
-              <Tag size={10} />
+              <Tag size={9} />
               {tag}
             </button>
           ))}
         </div>
       )}
 
-      {/* Notes grid */}
+      {/* Notes list */}
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {[1,2,3,4].map(i => (
-            <div key={i} className="bg-slate-800 rounded-xl p-4 animate-pulse h-28" />
-          ))}
+        <div className="space-y-2">
+          {[1, 2, 3, 4].map(i => <div key={i} className="bg-white rounded-2xl h-16 animate-pulse border border-gray-100" />)}
         </div>
       ) : displayed.length === 0 ? (
-        <div className="text-center py-16 text-slate-500">
+        <div className="text-center py-16">
           <div className="text-4xl mb-3">📭</div>
-          <p className="text-sm">{search ? 'No notes match your search' : 'No notes yet. Start chatting with your WhatsApp bot!'}</p>
+          <p className="text-gray-400 text-sm">{search ? 'No notes match your search' : 'No notes yet.'}</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50 overflow-hidden">
           {displayed.map(note => (
-            <div
-              key={note.id}
-              className="bg-slate-800 border border-slate-700 rounded-xl p-4 hover:border-slate-600 transition-colors"
-            >
-              {/* Header */}
-              <div className="flex items-start justify-between gap-2 mb-2">
+            <div key={note.id} className="px-4 py-3">
+              <div className="flex items-start gap-2">
                 <button
                   onClick={() => setExpandedId(expandedId === note.id ? null : note.id)}
-                  className="text-white font-medium text-sm text-left flex-1 leading-snug"
+                  className="flex-1 text-left"
                 >
-                  {note.summary || note.content.slice(0, 80)}
+                  <p className="text-gray-900 text-sm font-medium leading-snug">
+                    {note.summary || note.content.slice(0, 80)}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    <span className="text-gray-400 text-xs">{formatDate(note.created_at)}</span>
+                    {note.source === 'voice' && (
+                      <span className="flex items-center gap-0.5 text-gray-400 text-xs">
+                        <Volume2 size={10} /> Voice
+                      </span>
+                    )}
+                    {note.tags.slice(0, 3).map(tag => (
+                      <span key={tag} className="text-indigo-500 text-xs">#{tag}</span>
+                    ))}
+                  </div>
                 </button>
-                <div className="flex items-center gap-1 shrink-0">
-                  {note.source === 'voice' && (
-                    <span title="Voice note" className="text-slate-500">
-                      <Volume2 size={13} />
-                    </span>
-                  )}
+                <div className="flex items-center gap-0.5 shrink-0 mt-0.5">
                   <button
                     onClick={() => deleteNote(note.id)}
                     disabled={deletingId === note.id}
-                    className="text-slate-500 hover:text-red-400 transition-colors p-1"
+                    className="p-1.5 text-gray-300 hover:text-red-400 transition-colors rounded-lg hover:bg-red-50"
                   >
                     <Trash2 size={13} />
                   </button>
                   <button
                     onClick={() => setExpandedId(expandedId === note.id ? null : note.id)}
-                    className="text-slate-500 hover:text-white transition-colors p-1"
+                    className="p-1.5 text-gray-300 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100"
                   >
                     {expandedId === note.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                   </button>
                 </div>
               </div>
 
-              {/* Expanded content */}
               {expandedId === note.id && (
-                <div className="mt-2 mb-3 text-slate-300 text-sm leading-relaxed whitespace-pre-wrap border-t border-slate-700 pt-2">
+                <div className="mt-3 text-gray-600 text-sm leading-relaxed whitespace-pre-wrap bg-gray-50 rounded-xl px-3 py-2.5">
                   {note.content}
                 </div>
               )}
-
-              {/* Footer */}
-              <div className="flex items-center justify-between mt-1">
-                <span className="text-slate-500 text-xs">{formatDate(note.created_at)}</span>
-                {note.tags.length > 0 && (
-                  <div className="flex gap-1 flex-wrap justify-end">
-                    {note.tags.map(tag => (
-                      <span key={tag} className="bg-indigo-900/50 text-indigo-300 text-xs px-2 py-0.5 rounded-full">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
             </div>
           ))}
         </div>
@@ -348,13 +457,11 @@ function TasksTab({ phone, refreshTrigger }: { phone: string; refreshTrigger: nu
   }, [phone, filter]);
 
   useEffect(() => { fetchTasks(); }, [fetchTasks]);
-  // Silent background refresh when parent signals a change
   useEffect(() => { if (refreshTrigger > 0) fetchTasks(true); }, [refreshTrigger]);
 
   async function addTask() {
     if (!newTitle.trim()) return;
     setSaving(true);
-    // Optimistic insert — show immediately, sync in background
     const optimisticTask: Task = {
       id: `temp-${Date.now()}`,
       title: newTitle.trim(),
@@ -368,7 +475,6 @@ function TasksTab({ phone, refreshTrigger }: { phone: string; refreshTrigger: nu
     setNewTitle(''); setNewDesc(''); setNewDue(''); setNewPriority('normal');
     setShowAddForm(false);
     setSaving(false);
-    // Background save + sync
     const res = await fetch('/api/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -380,7 +486,7 @@ function TasksTab({ phone, refreshTrigger }: { phone: string; refreshTrigger: nu
         priority: optimisticTask.priority,
       }),
     });
-    if (res.ok) fetchTasks(true); // replace temp item with real one silently
+    if (res.ok) fetchTasks(true);
   }
 
   async function toggleComplete(task: Task) {
@@ -414,14 +520,14 @@ function TasksTab({ phone, refreshTrigger }: { phone: string; refreshTrigger: nu
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Filter tabs + Add button */}
+      {/* Filter + Add */}
       <div className="flex items-center justify-between gap-2">
-        <div className="flex gap-1">
+        <div className="flex gap-1.5">
           {(['pending', 'today', 'all', 'completed'] as const).map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filter === f ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filter === f ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white border border-gray-200 text-gray-500 hover:border-indigo-300'}`}
             >
               {filterLabels[f]}
             </button>
@@ -429,25 +535,24 @@ function TasksTab({ phone, refreshTrigger }: { phone: string; refreshTrigger: nu
         </div>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
-          className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+          className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors shadow-sm"
         >
           <Plus size={13} />
-          Add Task
+          Add
         </button>
       </div>
 
       {/* Add Task Form */}
       {showAddForm && (
-        <div className="bg-slate-800 border border-indigo-600/50 rounded-xl p-4 space-y-3">
-          <h3 className="text-white font-medium text-sm">New Task</h3>
-
+        <div className="bg-white border border-indigo-100 rounded-2xl p-4 space-y-3 shadow-sm">
+          <h3 className="text-gray-900 font-semibold text-sm">New Task</h3>
           <input
             type="text"
             placeholder="Task title *"
             value={newTitle}
             onChange={e => setNewTitle(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && addTask()}
-            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 text-sm bg-gray-50"
             autoFocus
           />
           <input
@@ -455,19 +560,19 @@ function TasksTab({ phone, refreshTrigger }: { phone: string; refreshTrigger: nu
             placeholder="Description (optional)"
             value={newDesc}
             onChange={e => setNewDesc(e.target.value)}
-            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 text-sm bg-gray-50"
           />
           <div className="flex gap-2">
             <input
               type="datetime-local"
               value={newDue}
               onChange={e => setNewDue(e.target.value)}
-              className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500 text-sm"
+              className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-gray-900 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 text-sm bg-gray-50"
             />
             <select
               value={newPriority}
               onChange={e => setNewPriority(e.target.value as 'low' | 'normal' | 'high')}
-              className="bg-slate-700 border border-slate-600 rounded-lg px-2 py-2 text-white focus:outline-none focus:border-indigo-500 text-sm"
+              className="border border-gray-200 rounded-xl px-2 py-2.5 text-gray-900 focus:outline-none focus:border-indigo-400 text-sm bg-gray-50"
             >
               <option value="low">Low</option>
               <option value="normal">Normal</option>
@@ -478,13 +583,13 @@ function TasksTab({ phone, refreshTrigger }: { phone: string; refreshTrigger: nu
             <button
               onClick={addTask}
               disabled={saving || !newTitle.trim()}
-              className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium py-2 rounded-lg transition-colors"
+              className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white text-sm font-medium py-2.5 rounded-xl transition-colors"
             >
               {saving ? 'Adding...' : 'Add Task'}
             </button>
             <button
               onClick={() => setShowAddForm(false)}
-              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm rounded-lg transition-colors"
+              className="px-4 py-2.5 border border-gray-200 text-gray-500 text-sm rounded-xl transition-colors hover:bg-gray-50"
             >
               Cancel
             </button>
@@ -495,33 +600,31 @@ function TasksTab({ phone, refreshTrigger }: { phone: string; refreshTrigger: nu
       {/* Task list */}
       {loading ? (
         <div className="space-y-2">
-          {[1,2,3].map(i => <div key={i} className="bg-slate-800 rounded-xl h-14 animate-pulse" />)}
+          {[1, 2, 3].map(i => <div key={i} className="bg-white rounded-xl h-14 animate-pulse border border-gray-100" />)}
         </div>
       ) : tasks.length === 0 ? (
-        <div className="text-center py-16 text-slate-500">
+        <div className="text-center py-16">
           <div className="text-4xl mb-3">✅</div>
-          <p className="text-sm">
-            {filter === 'completed' ? 'No completed tasks yet' :
-             filter === 'today' ? 'No tasks due today' :
-             'No tasks yet. Add one above or ask the WhatsApp bot!'}
+          <p className="text-gray-400 text-sm">
+            {filter === 'completed' ? 'No completed tasks' :
+             filter === 'today' ? 'Nothing due today' :
+             'No tasks yet'}
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50 overflow-hidden">
           {tasks.map(task => (
             <div
               key={task.id}
-              className={`bg-slate-800 border rounded-xl px-4 py-3 flex items-start gap-3 transition-colors ${task.is_completed ? 'border-slate-700 opacity-60' : 'border-slate-700 hover:border-slate-600'}`}
+              className={`flex items-start gap-3 px-4 py-3 ${task.is_completed ? 'opacity-50' : ''}`}
             >
-              {/* Checkbox */}
               <button
                 onClick={() => toggleComplete(task)}
-                className={`mt-0.5 shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${task.is_completed ? 'border-green-500 bg-green-500' : 'border-slate-500 hover:border-indigo-400'}`}
+                className={`mt-0.5 shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${task.is_completed ? 'border-green-500 bg-green-500' : 'border-gray-300 hover:border-indigo-400'}`}
               >
-                {task.is_completed && <Check size={11} className="text-white" strokeWidth={3} />}
+                {task.is_completed && <Check size={10} className="text-white" strokeWidth={3} />}
               </button>
 
-              {/* Content */}
               <div className="flex-1 min-w-0">
                 {editingId === task.id ? (
                   <div className="flex gap-2">
@@ -529,44 +632,42 @@ function TasksTab({ phone, refreshTrigger }: { phone: string; refreshTrigger: nu
                       value={editTitle}
                       onChange={e => setEditTitle(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') saveEditTitle(task); if (e.key === 'Escape') setEditingId(null); }}
-                      className="flex-1 bg-slate-700 text-white text-sm px-2 py-1 rounded border border-indigo-500 focus:outline-none"
+                      className="flex-1 text-sm px-2.5 py-1.5 rounded-lg border border-indigo-400 focus:outline-none bg-indigo-50 text-gray-900"
                       autoFocus
                     />
-                    <button onClick={() => saveEditTitle(task)} className="text-green-400 hover:text-green-300"><Check size={15} /></button>
-                    <button onClick={() => setEditingId(null)} className="text-slate-400 hover:text-white"><X size={15} /></button>
+                    <button onClick={() => saveEditTitle(task)} className="text-green-500 hover:text-green-600 p-1">
+                      <Check size={14} />
+                    </button>
+                    <button onClick={() => setEditingId(null)} className="text-gray-400 hover:text-gray-600 p-1">
+                      <X size={14} />
+                    </button>
                   </div>
                 ) : (
                   <button
                     onClick={() => { setEditingId(task.id); setEditTitle(task.title); }}
-                    className={`text-sm font-medium text-left w-full ${task.is_completed ? 'line-through text-slate-500' : 'text-white'}`}
+                    className={`text-sm font-medium text-left w-full ${task.is_completed ? 'line-through text-gray-400' : 'text-gray-900'}`}
                   >
                     {task.title}
                   </button>
                 )}
 
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  {/* Priority dot */}
-                  <span className={`w-2 h-2 rounded-full ${priorityColor(task.priority)}`} title={task.priority} />
-
-                  {/* Due date */}
+                  <span className={`w-2 h-2 rounded-full ${priorityDot(task.priority)}`} title={task.priority} />
                   {task.due_date && (
-                    <span className={`flex items-center gap-1 text-xs ${isOverdue(task.due_date) && !task.is_completed ? 'text-red-400' : 'text-slate-500'}`}>
+                    <span className={`flex items-center gap-1 text-xs ${isOverdue(task.due_date) && !task.is_completed ? 'text-red-500 font-medium' : 'text-gray-400'}`}>
                       <Calendar size={10} />
                       {formatDateTime(task.due_date)}
                     </span>
                   )}
-
-                  {/* Description */}
                   {task.description && (
-                    <span className="text-slate-500 text-xs truncate max-w-[180px]">{task.description}</span>
+                    <span className="text-gray-400 text-xs truncate max-w-[160px]">{task.description}</span>
                   )}
                 </div>
               </div>
 
-              {/* Delete */}
               <button
                 onClick={() => deleteTask(task.id)}
-                className="shrink-0 text-slate-600 hover:text-red-400 transition-colors p-1"
+                className="shrink-0 p-1.5 text-gray-300 hover:text-red-400 transition-colors rounded-lg hover:bg-red-50 mt-0.5"
               >
                 <Trash2 size={13} />
               </button>
@@ -600,8 +701,7 @@ function ChatTab({ phone }: { phone: string }) {
     const msg = (text ?? input).trim();
     if (!msg || loading) return;
     setInput('');
-    const userMsg: ChatMessage = { role: 'user', content: msg, timestamp: Date.now() };
-    setMessages(prev => [...prev, userMsg]);
+    setMessages(prev => [...prev, { role: 'user', content: msg, timestamp: Date.now() }]);
     setLoading(true);
     try {
       const res = await fetch('/api/chat', {
@@ -610,17 +710,9 @@ function ChatTab({ phone }: { phone: string }) {
         body: JSON.stringify({ phone, message: msg }),
       });
       const data = await res.json();
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: data.reply || 'Sorry, no response.',
-        timestamp: Date.now(),
-      }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: data.reply || 'Sorry, no response.', timestamp: Date.now() }]);
     } catch {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'Connection error. Please try again.',
-        timestamp: Date.now(),
-      }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Connection error. Please try again.', timestamp: Date.now() }]);
     } finally {
       setLoading(false);
     }
@@ -629,9 +721,7 @@ function ChatTab({ phone }: { phone: string }) {
   async function startRecording() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const options = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? { mimeType: 'audio/webm;codecs=opus' }
-        : {};
+      const options = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? { mimeType: 'audio/webm;codecs=opus' } : {};
       const recorder = new MediaRecorder(stream, options);
       chunksRef.current = [];
       recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
@@ -644,11 +734,7 @@ function ChatTab({ phone }: { phone: string }) {
           formData.append('audio', blob);
           const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
           const data = await res.json();
-          if (data.text) {
-            setInput(data.text);
-          }
-        } catch {
-          // silently fail
+          if (data.text) setInput(data.text);
         } finally {
           setTranscribing(false);
         }
@@ -657,7 +743,7 @@ function ChatTab({ phone }: { phone: string }) {
       mediaRecorderRef.current = recorder;
       setRecording(true);
     } catch {
-      alert('Microphone access denied. Please allow microphone permissions.');
+      alert('Microphone access denied.');
     }
   }
 
@@ -669,28 +755,25 @@ function ChatTab({ phone }: { phone: string }) {
 
   return (
     <div className="flex flex-col" style={{ height: 'calc(100dvh - 160px)' }}>
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto space-y-3 pb-4 pr-1">
+      <div className="flex-1 overflow-y-auto space-y-3 pb-4">
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div
-              className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                msg.role === 'user'
-                  ? 'bg-indigo-600 text-white rounded-br-sm'
-                  : 'bg-slate-800 text-slate-100 rounded-bl-sm border border-slate-700'
-              }`}
-            >
+            <div className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+              msg.role === 'user'
+                ? 'bg-indigo-600 text-white rounded-br-sm'
+                : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100 shadow-sm'
+            }`}>
               {msg.content}
             </div>
           </div>
         ))}
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-slate-800 border border-slate-700 rounded-2xl rounded-bl-sm px-4 py-3">
+            <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
               <div className="flex gap-1">
-                <span className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                {[0, 150, 300].map(delay => (
+                  <span key={delay} className="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: `${delay}ms` }} />
+                ))}
               </div>
             </div>
           </div>
@@ -698,8 +781,7 @@ function ChatTab({ phone }: { phone: string }) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input row */}
-      <div className="flex items-end gap-2 pt-3 border-t border-slate-700">
+      <div className="flex items-end gap-2 pt-3 border-t border-gray-100">
         <div className="flex-1 relative">
           <textarea
             value={transcribing ? 'Transcribing...' : input}
@@ -708,32 +790,23 @@ function ChatTab({ phone }: { phone: string }) {
             placeholder="Ask anything… (Enter to send)"
             rows={1}
             disabled={loading || transcribing}
-            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm resize-none leading-5 max-h-32 overflow-y-auto"
+            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 text-sm resize-none leading-5 max-h-32 overflow-y-auto shadow-sm"
             style={{ minHeight: '44px' }}
           />
         </div>
-
-        {/* Mic button */}
         <button
           onClick={recording ? stopRecording : startRecording}
           disabled={loading || transcribing}
-          className={`shrink-0 p-3 rounded-xl transition-colors disabled:opacity-50 ${
-            recording
-              ? 'bg-red-600 hover:bg-red-500 text-white animate-pulse'
-              : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
-          }`}
-          title={recording ? 'Stop recording' : 'Voice input'}
+          className={`shrink-0 p-3 rounded-xl transition-colors disabled:opacity-40 ${recording ? 'bg-red-500 text-white animate-pulse' : 'bg-white border border-gray-200 text-gray-500 hover:border-indigo-300 shadow-sm'}`}
         >
-          {recording ? <MicOff size={18} /> : <Mic size={18} />}
+          {recording ? <MicOff size={17} /> : <Mic size={17} />}
         </button>
-
-        {/* Send button */}
         <button
           onClick={() => sendMessage()}
           disabled={!input.trim() || loading}
-          className="shrink-0 p-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl transition-colors"
+          className="shrink-0 p-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-xl transition-colors shadow-sm"
         >
-          <Send size={18} />
+          <Send size={17} />
         </button>
       </div>
     </div>
@@ -742,15 +815,7 @@ function ChatTab({ phone }: { phone: string }) {
 
 // ─── Quick Add Modal ──────────────────────────────────────────────────────────
 
-function QuickAddModal({
-  phone,
-  onClose,
-  onSuccess,
-}: {
-  phone: string;
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
+function QuickAddModal({ phone, onClose, onSuccess }: { phone: string; onClose: () => void; onSuccess: () => void }) {
   const [mode, setMode] = useState<'note' | 'task'>('note');
   const [text, setText] = useState('');
   const [recording, setRecording] = useState(false);
@@ -762,8 +827,7 @@ function QuickAddModal({
   async function startRecording() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const options = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? { mimeType: 'audio/webm;codecs=opus' } : {};
+      const options = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? { mimeType: 'audio/webm;codecs=opus' } : {};
       const recorder = new MediaRecorder(stream, options);
       chunksRef.current = [];
       recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
@@ -777,16 +841,12 @@ function QuickAddModal({
           const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
           const data = await res.json();
           if (data.text) setText(data.text);
-        } finally {
-          setTranscribing(false);
-        }
+        } finally { setTranscribing(false); }
       };
       recorder.start();
       mediaRecorderRef.current = recorder;
       setRecording(true);
-    } catch {
-      alert('Microphone access required');
-    }
+    } catch { alert('Microphone access required'); }
   }
 
   function stopRecording() {
@@ -814,63 +874,54 @@ function QuickAddModal({
       }
       onSuccess();
       onClose();
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md p-5 shadow-2xl">
-        {/* Tabs */}
-        <div className="flex gap-1 mb-4 bg-slate-700 p-1 rounded-lg">
-          <button
-            onClick={() => setMode('note')}
-            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${mode === 'note' ? 'bg-slate-500 text-white' : 'text-slate-400'}`}
-          >
-            📝 Note
-          </button>
-          <button
-            onClick={() => setMode('task')}
-            className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${mode === 'task' ? 'bg-slate-500 text-white' : 'text-slate-400'}`}
-          >
-            ✅ Task
-
-          </button>
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl w-full max-w-md p-5 shadow-xl border border-gray-100">
+        <div className="flex gap-1 mb-4 bg-gray-100 p-1 rounded-xl">
+          {(['note', 'task'] as const).map(m => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={`flex-1 py-1.5 text-sm font-medium rounded-lg transition-colors ${mode === m ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}
+            >
+              {m === 'note' ? '📝 Note' : '✅ Task'}
+            </button>
+          ))}
         </div>
 
-        {/* Input */}
         <textarea
           value={transcribing ? 'Transcribing...' : text}
           onChange={e => setText(e.target.value)}
           placeholder={mode === 'note' ? 'Type a note...' : 'Task title...'}
           rows={3}
           disabled={recording || transcribing}
-          className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm resize-none"
+          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 text-sm resize-none bg-gray-50"
           autoFocus
         />
 
-        {/* Actions */}
         <div className="flex gap-2 mt-3">
           <button
             onClick={recording ? stopRecording : startRecording}
             disabled={transcribing}
-            className={`p-3 rounded-xl transition-colors ${recording ? 'bg-red-600 text-white animate-pulse' : 'bg-slate-700 hover:bg-slate-600 text-slate-300'}`}
+            className={`p-3 rounded-xl transition-colors ${recording ? 'bg-red-500 text-white animate-pulse' : 'border border-gray-200 text-gray-500 hover:border-indigo-300 bg-white'}`}
           >
-            {recording ? <MicOff size={18} /> : <Mic size={18} />}
+            {recording ? <MicOff size={17} /> : <Mic size={17} />}
           </button>
           <button
             onClick={save}
             disabled={saving || !text.trim()}
-            className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium py-2.5 rounded-xl transition-colors text-sm"
+            className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white font-medium py-2.5 rounded-xl transition-colors text-sm"
           >
             {saving ? 'Saving...' : `Save ${mode === 'note' ? 'Note' : 'Task'}`}
           </button>
           <button
             onClick={onClose}
-            className="p-3 bg-slate-700 hover:bg-slate-600 text-slate-400 rounded-xl transition-colors"
+            className="p-3 border border-gray-200 text-gray-500 rounded-xl transition-colors hover:bg-gray-50 bg-white"
           >
-            <X size={18} />
+            <X size={17} />
           </button>
         </div>
       </div>
@@ -907,15 +958,15 @@ function CalendarStrip({
 
   if (!connected) {
     return (
-      <div className="mx-4 mt-3 mb-1 flex items-center justify-between bg-slate-800/60 border border-slate-700 rounded-xl px-4 py-2.5">
-        <div className="flex items-center gap-2 text-slate-400 text-sm">
+      <div className="mx-4 mt-3 mb-1 flex items-center justify-between bg-white border border-gray-200 rounded-2xl px-4 py-2.5 shadow-sm">
+        <div className="flex items-center gap-2 text-gray-400 text-sm">
           <CalendarDays size={15} />
-          <span>Google Calendar not connected</span>
+          <span>Connect Google Calendar</span>
         </div>
         <a
           href={`/api/auth/google?phone=${encodeURIComponent(phone)}`}
           onClick={onConnect}
-          className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors shrink-0"
+          className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors shrink-0"
         >
           Connect
         </a>
@@ -926,15 +977,14 @@ function CalendarStrip({
   return (
     <div className="mx-4 mt-3 mb-1">
       <div className="flex items-center justify-between mb-2 px-0.5">
-        <div className="flex items-center gap-1.5 text-slate-400 text-xs">
-          <CalendarDays size={13} />
+        <div className="flex items-center gap-1.5 text-gray-400 text-xs font-medium uppercase tracking-wide">
+          <CalendarDays size={12} />
           <span>{events.length === 0 ? 'No upcoming events' : 'Upcoming'}</span>
         </div>
         <button
           onClick={handleDisconnect}
           disabled={disconnecting}
-          className="text-slate-600 hover:text-red-400 text-xs transition-colors disabled:opacity-50"
-          title="Disconnect Google Calendar"
+          className="text-gray-300 hover:text-red-400 text-xs transition-colors disabled:opacity-50"
         >
           {disconnecting ? 'Disconnecting...' : 'Disconnect'}
         </button>
@@ -944,23 +994,14 @@ function CalendarStrip({
           {events.map((ev, i) => {
             const start = new Date(ev.start);
             const timeStr = start.toLocaleString('en-IN', {
-              timeZone: 'Asia/Kolkata',
-              weekday: 'short',
-              month: 'short',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
+              timeZone: 'Asia/Kolkata', weekday: 'short', month: 'short', day: 'numeric',
+              hour: '2-digit', minute: '2-digit',
             });
             return (
-              <div
-                key={i}
-                className="shrink-0 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 min-w-[160px] max-w-[200px]"
-              >
-                <p className="text-white text-xs font-medium truncate">{ev.title}</p>
-                <p className="text-slate-400 text-xs mt-0.5">{timeStr}</p>
-                {ev.location && (
-                  <p className="text-slate-500 text-xs truncate mt-0.5">{ev.location}</p>
-                )}
+              <div key={i} className="shrink-0 bg-white border border-gray-200 rounded-xl px-3 py-2 min-w-[160px] max-w-[200px] shadow-sm">
+                <p className="text-gray-900 text-xs font-medium truncate">{ev.title}</p>
+                <p className="text-gray-400 text-xs mt-0.5">{timeStr}</p>
+                {ev.location && <p className="text-gray-400 text-xs truncate mt-0.5">{ev.location}</p>}
               </div>
             );
           })}
@@ -974,7 +1015,7 @@ function CalendarStrip({
 
 export default function Dashboard() {
   const [phone, setPhone] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'notes' | 'tasks' | 'chat'>('notes');
+  const [activeTab, setActiveTab] = useState<'home' | 'notes' | 'tasks' | 'chat'>('home');
   const [showModal, setShowModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [mounted, setMounted] = useState(false);
@@ -989,9 +1030,7 @@ export default function Dashboard() {
       const data = await res.json();
       setCalendarConnected(data.connected ?? false);
       setCalendarEvents(data.events ?? []);
-    } catch {
-      // silently fail — calendar is optional
-    }
+    } catch { /* calendar is optional */ }
   }
 
   useEffect(() => {
@@ -999,7 +1038,6 @@ export default function Dashboard() {
     const saved = localStorage.getItem('wa_phone');
     if (saved) setPhone(saved);
 
-    // Handle OAuth callback params
     const params = new URLSearchParams(window.location.search);
     if (params.get('calendar') === 'connected') setCalendarBanner('connected');
     if (params.get('calendar') === 'error') {
@@ -1023,38 +1061,39 @@ export default function Dashboard() {
     setPhone(null);
   }
 
-  // Avoid SSR mismatch
   if (!mounted) return null;
-
   if (!phone) return <LoginScreen onLogin={handleLogin} />;
 
   const tabs = [
-    { id: 'notes' as const, label: 'Notes', icon: Notebook },
+    { id: 'home' as const, label: 'Home', icon: Home },
+    { id: 'notes' as const, label: 'Notes', icon: FileText },
     { id: 'tasks' as const, label: 'Tasks', icon: CheckSquare },
     { id: 'chat' as const, label: 'Chat', icon: MessageSquare },
   ];
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col max-w-2xl mx-auto">
+    <div className="min-h-screen bg-gray-50 flex flex-col max-w-2xl mx-auto">
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-slate-900/95 backdrop-blur-sm border-b border-slate-800 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-xl">📝</span>
-          <h1 className="text-white font-bold text-lg">Notes AI</h1>
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 py-3 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center">
+            <span className="text-sm">📝</span>
+          </div>
+          <h1 className="text-gray-900 font-bold text-base">Notes AI</h1>
         </div>
         <div className="flex items-center gap-2">
           {calendarConnected && (
-            <span className="flex items-center gap-1 bg-green-900/40 text-green-400 text-xs px-2 py-1 rounded-full border border-green-800/50">
-              <CalendarDays size={11} />
-              Calendar
+            <span className="flex items-center gap-1 bg-green-50 text-green-600 text-xs px-2 py-1 rounded-full border border-green-100">
+              <CalendarDays size={10} />
+              Cal
             </span>
           )}
-          <span className="bg-slate-800 text-slate-400 text-xs px-2.5 py-1 rounded-full border border-slate-700 max-w-[120px] truncate">
-            {phone}
+          <span className="bg-gray-100 text-gray-500 text-xs px-2.5 py-1 rounded-full max-w-[120px] truncate">
+            {phone.replace('whatsapp:', '')}
           </span>
           <button
             onClick={handleLogout}
-            className="p-1.5 text-slate-500 hover:text-white transition-colors"
+            className="p-1.5 text-gray-400 hover:text-gray-700 transition-colors"
             title="Log Out"
           >
             <LogOut size={15} />
@@ -1062,13 +1101,15 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Calendar connected / error banner */}
+      {/* Calendar banner */}
       {calendarBanner && (
-        <div className={`mx-4 mt-3 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm ${calendarBanner === 'connected' ? 'bg-green-900/30 border border-green-700/50 text-green-300' : 'bg-red-900/30 border border-red-700/50 text-red-300'}`}>
+        <div className={`mx-4 mt-3 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm ${calendarBanner === 'connected' ? 'bg-green-50 border border-green-100 text-green-700' : 'bg-red-50 border border-red-100 text-red-600'}`}>
           {calendarBanner === 'connected'
             ? '✅ Google Calendar connected!'
-            : `❌ Calendar connection failed${calendarError ? `: ${calendarError}` : '. Please try again.'}`}
-          <button onClick={() => setCalendarBanner(null)} className="ml-auto text-current opacity-60 hover:opacity-100"><X size={14} /></button>
+            : `❌ Calendar error${calendarError ? `: ${calendarError}` : ''}`}
+          <button onClick={() => setCalendarBanner(null)} className="ml-auto opacity-60 hover:opacity-100">
+            <X size={14} />
+          </button>
         </div>
       )}
 
@@ -1081,8 +1122,16 @@ export default function Dashboard() {
         onDisconnect={() => { setCalendarConnected(false); setCalendarEvents([]); }}
       />
 
-      {/* Content — all tabs stay mounted; show/hide with CSS so no remount lag */}
+      {/* Content */}
       <main className="flex-1 px-4 py-4 pb-24">
+        <div className={activeTab === 'home' ? 'block' : 'hidden'}>
+          <HomeTab
+            phone={phone}
+            calendarConnected={calendarConnected}
+            calendarEvents={calendarEvents}
+            onNavigate={tab => setActiveTab(tab)}
+          />
+        </div>
         <div className={activeTab === 'notes' ? 'block' : 'hidden'}>
           <NotesTab phone={phone} refreshTrigger={refreshKey} />
         </div>
@@ -1095,7 +1144,7 @@ export default function Dashboard() {
       </main>
 
       {/* Bottom Tab Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-sm border-t border-slate-800 z-30">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-100 z-30 shadow-sm">
         <div className="max-w-2xl mx-auto flex">
           {tabs.map(tab => {
             const Icon = tab.icon;
@@ -1104,9 +1153,9 @@ export default function Dashboard() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 flex flex-col items-center gap-1 py-3 transition-colors ${active ? 'text-indigo-400' : 'text-slate-500 hover:text-slate-300'}`}
+                className={`flex-1 flex flex-col items-center gap-1 py-3 transition-colors ${active ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
               >
-                <Icon size={20} strokeWidth={active ? 2.5 : 1.5} />
+                <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
                 <span className="text-xs font-medium">{tab.label}</span>
               </button>
             );
@@ -1114,13 +1163,13 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      {/* FAB — only on notes and tasks tabs */}
+      {/* FAB */}
       {activeTab !== 'chat' && (
         <button
           onClick={() => setShowModal(true)}
-          className="fixed bottom-20 right-4 w-14 h-14 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-lg shadow-indigo-900/50 flex items-center justify-center z-40 transition-all active:scale-95"
+          className="fixed bottom-20 right-4 w-13 h-13 w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg shadow-indigo-200 flex items-center justify-center z-40 transition-all active:scale-95"
         >
-          <Plus size={24} />
+          <Plus size={22} />
         </button>
       )}
 

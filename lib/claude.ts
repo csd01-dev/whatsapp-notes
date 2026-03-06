@@ -31,13 +31,13 @@ const tools: Anthropic.Tool[] = [
   {
     name: 'save_note',
     description:
-      'Save a new note, reminder, idea, task, or any information the user wants to remember. Use this whenever the user shares something they want stored.',
+      'Save a new note, idea, or information the user wants to remember. Before saving, choose the best storage format:\n- LIST: shopping lists, bullet points, steps → format as markdown bullet list\n- TABLE: structured data with fields (expenses, contacts, ingredients+qty, comparisons) → format as markdown table\n- TEXT: prose, ideas, journal, free-form thoughts → save as-is\nAlways reformat the content into the chosen structure before saving. Never save raw unstructured text when a table or list would be clearer.',
     input_schema: {
       type: 'object' as const,
       properties: {
         content: {
           type: 'string',
-          description: 'The full content of the note exactly as the user shared it',
+          description: 'The formatted content. For lists use "- item" markdown. For tables use | col | col | markdown table syntax. For text, save as-is.',
         },
         summary: {
           type: 'string',
@@ -47,7 +47,12 @@ const tools: Anthropic.Tool[] = [
           type: 'array',
           items: { type: 'string' },
           description:
-            'Relevant tags e.g. ["reminder", "work", "idea", "meeting", "personal", "shopping"]',
+            'Relevant tags e.g. ["reminder", "work", "idea", "meeting", "personal", "shopping", "table", "list"]',
+        },
+        format: {
+          type: 'string',
+          enum: ['text', 'list', 'table'],
+          description: 'The storage format chosen: text (prose), list (bullet points), or table (structured rows)',
         },
       },
       required: ['content', 'summary'],
@@ -250,6 +255,15 @@ Guidelines:
 - If the message is clearly a note/idea/info to remember → save_note
 - Support Hindi messages too — save as-is
 - Be conversational and friendly
+
+Smart storage format — always pick the best format before saving:
+- LIST format: shopping lists, packing lists, bullet points, steps, ingredients (no quantities) → "- item" markdown
+- TABLE format: expenses with amounts, contacts with fields, any data with multiple attributes per row → markdown table with | headers |
+- TEXT format: ideas, journaling, meeting notes, free-form thoughts → prose as-is
+Examples:
+  "milk eggs butter" → list: "- milk\n- eggs\n- butter"
+  "spent 500 on groceries, 200 on cab, 100 on coffee" → table: | Item | Amount |\n|---|---|\n| Groceries | ₹500 |...
+  "had a great idea about..." → text
 
 Note commands:
 - "show notes" / "list all" → list_recent_notes
