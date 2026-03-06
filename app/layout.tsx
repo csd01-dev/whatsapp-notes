@@ -22,7 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="apple-touch-icon" href="/icon.svg" />
       </head>
-      <body className="bg-slate-900 text-white min-h-screen antialiased">
+      <body className="bg-gray-50 min-h-screen antialiased">
         {children}
       </body>
     </html>
