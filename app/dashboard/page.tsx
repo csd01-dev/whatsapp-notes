@@ -885,12 +885,26 @@ function CalendarStrip({
   connected,
   events,
   onConnect,
+  onDisconnect,
 }: {
   phone: string;
   connected: boolean;
   events: CalendarEvent[];
   onConnect: () => void;
+  onDisconnect: () => void;
 }) {
+  const [disconnecting, setDisconnecting] = useState(false);
+
+  async function handleDisconnect() {
+    setDisconnecting(true);
+    try {
+      await fetch(`/api/calendar?phone=${encodeURIComponent(phone)}`, { method: 'DELETE' });
+      onDisconnect();
+    } finally {
+      setDisconnecting(false);
+    }
+  }
+
   if (!connected) {
     return (
       <div className="mx-4 mt-3 mb-1 flex items-center justify-between bg-slate-800/60 border border-slate-700 rounded-xl px-4 py-2.5">
@@ -909,46 +923,49 @@ function CalendarStrip({
     );
   }
 
-  if (events.length === 0) {
-    return (
-      <div className="mx-4 mt-3 mb-1 flex items-center gap-2 text-slate-500 text-xs px-1">
-        <CalendarDays size={13} />
-        <span>No upcoming events</span>
-      </div>
-    );
-  }
-
   return (
     <div className="mx-4 mt-3 mb-1">
-      <div className="flex items-center gap-1.5 text-slate-400 text-xs mb-2 px-0.5">
-        <CalendarDays size={13} />
-        <span>Upcoming</span>
+      <div className="flex items-center justify-between mb-2 px-0.5">
+        <div className="flex items-center gap-1.5 text-slate-400 text-xs">
+          <CalendarDays size={13} />
+          <span>{events.length === 0 ? 'No upcoming events' : 'Upcoming'}</span>
+        </div>
+        <button
+          onClick={handleDisconnect}
+          disabled={disconnecting}
+          className="text-slate-600 hover:text-red-400 text-xs transition-colors disabled:opacity-50"
+          title="Disconnect Google Calendar"
+        >
+          {disconnecting ? 'Disconnecting...' : 'Disconnect'}
+        </button>
       </div>
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-        {events.map((ev, i) => {
-          const start = new Date(ev.start);
-          const timeStr = start.toLocaleString('en-IN', {
-            timeZone: 'Asia/Kolkata',
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          });
-          return (
-            <div
-              key={i}
-              className="shrink-0 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 min-w-[160px] max-w-[200px]"
-            >
-              <p className="text-white text-xs font-medium truncate">{ev.title}</p>
-              <p className="text-slate-400 text-xs mt-0.5">{timeStr}</p>
-              {ev.location && (
-                <p className="text-slate-500 text-xs truncate mt-0.5">{ev.location}</p>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      {events.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+          {events.map((ev, i) => {
+            const start = new Date(ev.start);
+            const timeStr = start.toLocaleString('en-IN', {
+              timeZone: 'Asia/Kolkata',
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            });
+            return (
+              <div
+                key={i}
+                className="shrink-0 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 min-w-[160px] max-w-[200px]"
+              >
+                <p className="text-white text-xs font-medium truncate">{ev.title}</p>
+                <p className="text-slate-400 text-xs mt-0.5">{timeStr}</p>
+                {ev.location && (
+                  <p className="text-slate-500 text-xs truncate mt-0.5">{ev.location}</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -1061,6 +1078,7 @@ export default function Dashboard() {
         connected={calendarConnected}
         events={calendarEvents}
         onConnect={() => {}}
+        onDisconnect={() => { setCalendarConnected(false); setCalendarEvents([]); }}
       />
 
       {/* Content — all tabs stay mounted; show/hide with CSS so no remount lag */}
