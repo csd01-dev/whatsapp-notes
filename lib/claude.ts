@@ -257,13 +257,21 @@ Guidelines:
 - Be conversational and friendly
 
 Smart storage format — always pick the best format before saving:
-- LIST format: shopping lists, packing lists, bullet points, steps, ingredients (no quantities) → "- item" markdown
-- TABLE format: expenses with amounts, contacts with fields, any data with multiple attributes per row → markdown table with | headers |
+- LIST format: shopping lists, packing lists, bullet points, steps, ingredients → "- item" markdown
+- TABLE format: expenses with amounts, workout plans, contacts with fields, any data with multiple attributes per row → markdown table with | headers |
 - TEXT format: ideas, journaling, meeting notes, free-form thoughts → prose as-is
 Examples:
   "milk eggs butter" → list: "- milk\n- eggs\n- butter"
-  "spent 500 on groceries, 200 on cab, 100 on coffee" → table: | Item | Amount |\n|---|---|\n| Groceries | ₹500 |...
+  "spent 500 on groceries, 200 on cab" → table: | Item | Amount |\n|---|---|\n| Groceries | ₹500 |...
   "had a great idea about..." → text
+
+IMPORTANT — When displaying a TABLE to the user in WhatsApp (not saving, but showing them), always wrap it in triple backticks so it renders in monospace:
+\`\`\`
+| Col1 | Col2 |
+|------|------|
+| val  | val  |
+\`\`\`
+This is critical for readability on mobile.
 
 Note commands:
 - "show notes" / "list all" → list_recent_notes
@@ -318,8 +326,8 @@ export async function processWhatsAppMessage(
   // ── Agentic tool-use loop ──
   while (true) {
     const response = await client.messages.create({
-      model: 'claude-haiku-4-5',
-      max_tokens: 1024,
+      model: 'claude-sonnet-4-5',
+      max_tokens: 4096,
       system: getSystemPrompt(),
       tools,
       messages: currentMessages,

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   Search, Trash2, Mic, MicOff, Send, Plus, X, Check,
   LogOut, ChevronRight, Tag, Calendar, AlertCircle, Volume2,
@@ -418,8 +420,33 @@ function NotesTab({ phone, refreshTrigger }: { phone: string; refreshTrigger: nu
               </div>
 
               {expandedId === note.id && (
-                <div className="mt-3 text-gray-600 text-sm leading-relaxed whitespace-pre-wrap bg-gray-50 rounded-xl px-3 py-2.5">
-                  {note.content}
+                <div className="mt-3 bg-gray-50 rounded-xl px-3 py-2.5 overflow-x-auto">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      table: ({ children }) => (
+                        <div className="overflow-x-auto w-full">
+                          <table className="min-w-full text-xs border-collapse">{children}</table>
+                        </div>
+                      ),
+                      thead: ({ children }) => <thead className="bg-gray-200">{children}</thead>,
+                      th: ({ children }) => (
+                        <th className="px-3 py-1.5 text-left font-semibold text-gray-700 border border-gray-300 whitespace-nowrap">{children}</th>
+                      ),
+                      td: ({ children }) => (
+                        <td className="px-3 py-1.5 text-gray-600 border border-gray-300 whitespace-nowrap">{children}</td>
+                      ),
+                      tr: ({ children }) => <tr className="even:bg-gray-50 odd:bg-white">{children}</tr>,
+                      ul: ({ children }) => <ul className="list-disc list-inside text-sm text-gray-600 space-y-0.5">{children}</ul>,
+                      ol: ({ children }) => <ol className="list-decimal list-inside text-sm text-gray-600 space-y-0.5">{children}</ol>,
+                      li: ({ children }) => <li className="text-sm text-gray-600">{children}</li>,
+                      p: ({ children }) => <p className="text-sm text-gray-600 leading-relaxed">{children}</p>,
+                      code: ({ children }) => <code className="bg-gray-200 rounded px-1 text-xs font-mono text-gray-700">{children}</code>,
+                      pre: ({ children }) => <pre className="overflow-x-auto bg-gray-100 rounded-lg p-2 text-xs">{children}</pre>,
+                    }}
+                  >
+                    {note.content}
+                  </ReactMarkdown>
                 </div>
               )}
             </div>
