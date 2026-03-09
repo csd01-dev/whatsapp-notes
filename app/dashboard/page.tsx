@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import {
   Search, Trash2, Mic, MicOff, Send, Plus, X, Check,
   LogOut, ChevronRight, Tag, Calendar, AlertCircle, Volume2,
@@ -281,6 +279,141 @@ function HomeTab({
   );
 }
 
+// ─── Note Content Renderer ────────────────────────────────────────────────────
+// Lightweight markdown renderer — handles tables, bullet lists, numbered lists,
+// code blocks, and plain text. No external dependencies.
+
+function NoteContent({ content }: { content: string }) {
+  const lines = content.split('\n');
+
+  // Detect markdown table: lines that start/end with |
+  const isTableLine = (l: string) => l.trim().startsWith('|') && l.trim().endsWith('|');
+  const isSeparatorLine = (l: string) => /^\|[\s\-|:]+\|$/.test(l.trim());
+
+  // Group lines into blocks
+  type Block =
+    | { type: 'table'; rows: string[][] }
+    | { type: 'ul'; items: string[] }
+    | { type: 'ol'; items: string[] }
+    | { type: 'code'; text: string }
+    | { type: 'text'; text: string };
+
+  const blocks: Block[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Code block
+    if (line.trim().startsWith('```')) {
+      const codeLines: string[] = [];
+      i++;
+      while (i < lines.length && !lines[i].trim().startsWith('```')) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      i++; // skip closing ```
+      blocks.push({ type: 'code', text: codeLines.join('\n') });
+      continue;
+    }
+
+    // Table
+    if (isTableLine(line)) {
+      const tableLines: string[] = [];
+      while (i < lines.length && isTableLine(lines[i])) {
+        if (!isSeparatorLine(lines[i])) tableLines.push(lines[i]);
+        i++;
+      }
+      const rows = tableLines.map(r =>
+        r.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim())
+      );
+      blocks.push({ type: 'table', rows });
+      continue;
+    }
+
+    // Unordered list
+    if (/^[-*]\s/.test(line.trim())) {
+      const items: string[] = [];
+      while (i < lines.length && /^[-*]\s/.test(lines[i].trim())) {
+        items.push(lines[i].trim().replace(/^[-*]\s/, ''));
+        i++;
+      }
+      blocks.push({ type: 'ul', items });
+      continue;
+    }
+
+    // Ordered list
+    if (/^\d+\.\s/.test(line.trim())) {
+      const items: string[] = [];
+      while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
+        items.push(lines[i].trim().replace(/^\d+\.\s/, ''));
+        i++;
+      }
+      blocks.push({ type: 'ol', items });
+      continue;
+    }
+
+    // Plain text / empty line
+    if (line.trim() === '') { i++; continue; }
+    blocks.push({ type: 'text', text: line });
+    i++;
+  }
+
+  return (
+    <div className="space-y-2 text-sm text-gray-600">
+      {blocks.map((block, idx) => {
+        if (block.type === 'table') {
+          const [header, ...body] = block.rows;
+          return (
+            <div key={idx} className="overflow-x-auto w-full rounded-lg border border-gray-200">
+              <table className="min-w-full text-xs border-collapse">
+                {header && (
+                  <thead className="bg-gray-100">
+                    <tr>
+                      {header.map((h, j) => (
+                        <th key={j} className="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-200 whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                )}
+                <tbody>
+                  {body.map((row, r) => (
+                    <tr key={r} className={r % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      {row.map((cell, c) => (
+                        <td key={c} className="px-3 py-2 text-gray-600 border-b border-gray-100 whitespace-nowrap">{cell}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        }
+        if (block.type === 'ul') {
+          return (
+            <ul key={idx} className="list-disc list-inside space-y-0.5 pl-1">
+              {block.items.map((item, j) => <li key={j} className="text-gray-600">{item}</li>)}
+            </ul>
+          );
+        }
+        if (block.type === 'ol') {
+          return (
+            <ol key={idx} className="list-decimal list-inside space-y-0.5 pl-1">
+              {block.items.map((item, j) => <li key={j} className="text-gray-600">{item}</li>)}
+            </ol>
+          );
+        }
+        if (block.type === 'code') {
+          return (
+            <pre key={idx} className="overflow-x-auto bg-gray-100 rounded-lg p-2 text-xs font-mono text-gray-700 whitespace-pre">{block.text}</pre>
+          );
+        }
+        return <p key={idx} className="leading-relaxed">{block.text}</p>;
+      })}
+    </div>
+  );
+}
+
 // ─── Notes Tab ────────────────────────────────────────────────────────────────
 
 function NotesTab({ phone, refreshTrigger }: { phone: string; refreshTrigger: number }) {
@@ -421,32 +554,7 @@ function NotesTab({ phone, refreshTrigger }: { phone: string; refreshTrigger: nu
 
               {expandedId === note.id && (
                 <div className="mt-3 bg-gray-50 rounded-xl px-3 py-2.5 overflow-x-auto">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      table: ({ children }) => (
-                        <div className="overflow-x-auto w-full">
-                          <table className="min-w-full text-xs border-collapse">{children}</table>
-                        </div>
-                      ),
-                      thead: ({ children }) => <thead className="bg-gray-200">{children}</thead>,
-                      th: ({ children }) => (
-                        <th className="px-3 py-1.5 text-left font-semibold text-gray-700 border border-gray-300 whitespace-nowrap">{children}</th>
-                      ),
-                      td: ({ children }) => (
-                        <td className="px-3 py-1.5 text-gray-600 border border-gray-300 whitespace-nowrap">{children}</td>
-                      ),
-                      tr: ({ children }) => <tr className="even:bg-gray-50 odd:bg-white">{children}</tr>,
-                      ul: ({ children }) => <ul className="list-disc list-inside text-sm text-gray-600 space-y-0.5">{children}</ul>,
-                      ol: ({ children }) => <ol className="list-decimal list-inside text-sm text-gray-600 space-y-0.5">{children}</ol>,
-                      li: ({ children }) => <li className="text-sm text-gray-600">{children}</li>,
-                      p: ({ children }) => <p className="text-sm text-gray-600 leading-relaxed">{children}</p>,
-                      code: ({ children }) => <code className="bg-gray-200 rounded px-1 text-xs font-mono text-gray-700">{children}</code>,
-                      pre: ({ children }) => <pre className="overflow-x-auto bg-gray-100 rounded-lg p-2 text-xs">{children}</pre>,
-                    }}
-                  >
-                    {note.content}
-                  </ReactMarkdown>
+                  <NoteContent content={note.content} />
                 </div>
               )}
             </div>
