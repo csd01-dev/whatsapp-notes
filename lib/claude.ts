@@ -318,7 +318,9 @@ export async function processWhatsAppMessage(
   while (true) {
     const response = await client.messages.create({
       model: 'claude-haiku-4-5',
-      max_tokens: 1024,
+      // 2048 tokens: enough for full table/list responses without truncation,
+      // while being 3-5x faster than sonnet at 4096.
+      max_tokens: 2048,
       system: getSystemPrompt(),
       tools,
       messages: currentMessages,
