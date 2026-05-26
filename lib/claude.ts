@@ -299,35 +299,26 @@ export async function processWhatsAppMessage(
   message: string,
   source: 'text' | 'voice' = 'text'
 ): Promise<string> {
-  // Prepend voice indicator so Claude knows it was transcribed
   const processedMessage =
     source === 'voice' ? `[Voice note transcribed]: ${message}` : message;
 
-  // Save user message to history
-  await saveConversationMessage(userId, 'user', processedMessage);
+  // Load prior conversation history FIRST (before saving the current message).
+  // This avoids a serial save→fetch round-trip: we append the current message
+  // manually below, so the DB read and the Claude call can start sooner.
+  const history = await getConversationHistory(userId, 6);
 
-  // Load last 10 conversation turns as context
-  const history = await getConversationHistory(userId, 10);
-
-  // Build messages array (history already includes this user turn since we saved above)
-  const messages: Anthropic.MessageParam[] = history.map((m) => ({
-    role: m.role,
-    content: m.content,
-  }));
-
-  // If history is empty or last message isn't the one we just saved, add it
-  const lastMsg = messages[messages.length - 1];
-  if (!lastMsg || lastMsg.role !== 'user' || lastMsg.content !== processedMessage) {
-    messages.push({ role: 'user', content: processedMessage });
-  }
+  const messages: Anthropic.MessageParam[] = [
+    ...history.map((m) => ({ role: m.role, content: m.content })),
+    { role: 'user' as const, content: processedMessage },
+  ];
 
   let currentMessages = [...messages];
 
   // ── Agentic tool-use loop ──
   while (true) {
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 4096,
+      model: 'claude-haiku-4-5',
+      max_tokens: 1024,
       system: getSystemPrompt(),
       tools,
       messages: currentMessages,
@@ -336,7 +327,11 @@ export async function processWhatsAppMessage(
     if (response.stop_reason === 'end_turn') {
       const textBlock = response.content.find((b) => b.type === 'text');
       const replyText = textBlock?.type === 'text' ? textBlock.text : 'Done!';
+
+      // Persist both turns now that we have the complete exchange
+      await saveConversationMessage(userId, 'user', processedMessage);
       await saveConversationMessage(userId, 'assistant', replyText);
+
       return replyText;
     }
 
@@ -532,9 +527,10 @@ export async function processWhatsAppMessage(
       continue;
     }
 
-    // Unexpected stop reason
+    // Unexpected stop reason — save user message so history stays consistent
+    await saveConversationMessage(userId, 'user', processedMessage);
     break;
   }
 
-  return "Sorry, something went wrong. Please try again.";
+  return 'Sorry, something went wrong. Please try again.';
 }
